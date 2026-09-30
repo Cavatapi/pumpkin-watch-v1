@@ -1,0 +1,11 @@
+target/
+out/
+.idea/
+*.iml
+*.log
+test-results/
+node_modules/
+.env
+.env.*
+!.env.example
+PROGRESS.md
