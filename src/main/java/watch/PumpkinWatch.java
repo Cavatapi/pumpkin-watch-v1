@@ -76,7 +76,7 @@ public final class PumpkinWatch implements AutoCloseable {
                     if(path.equals("/api/create")){
                         Game.require(rooms.size()<100,"The farm is busy. Try again later.");String code;do{code=token().substring(0,5).toUpperCase(Locale.ROOT);}while(rooms.containsKey(code));room=new Game(code,Boolean.TRUE.equals(d.get("practice")));rooms.put(code,room);
                     }else{room=rooms.get(Game.str(d,"code","").strip().toUpperCase(Locale.ROOT));Game.require(room!=null,"No patch with that code. Check it and try again.");}
-                    synchronized(room){String id=UUID.randomUUID().toString(),token=token();Game.Player p=room.addPlayer(id,Game.str(d,"name","Little sprout"),Game.str(d,"skin","pumpkin"));p.connected=false;p.disconnectedAt=System.currentTimeMillis();sessions.put(token,new Session(room.code,id));json(x,200,obj("token",token,"id",id,"state",room.snapshot()));}return;
+                    synchronized(room){String id=UUID.randomUUID().toString(),token=token();Game.Player p=room.addPlayer(id,Game.str(d,"name","Little sprout"),Game.str(d,"skin","pumpkin"));if(room.practice){room.command(id,obj("type","ready","ready",true));room.command(id,obj("type","start"));}p.connected=false;p.disconnectedAt=System.currentTimeMillis();sessions.put(token,new Session(room.code,id));json(x,200,obj("token",token,"id",id,"state",room.snapshot()));}return;
                 }
                 String auth=x.getRequestHeaders().getFirst("Authorization"),token=auth!=null&&auth.startsWith("Bearer ")?auth.substring(7):"";Session s=sessions.get(token);Game room=s==null?null:rooms.get(s.code);
                 if(room==null){json(x,401,obj("error","Your room expired. Plant a new patch."));return;}
@@ -88,7 +88,7 @@ public final class PumpkinWatch implements AutoCloseable {
                 }
                 json(x,404,obj("error","Unknown action."));return;
             }
-            Map<String,String> files=Map.of("/","index.html","/index.html","index.html","/app.js","app.js","/art.js","art.js","/style.css","style.css","/favicon.svg","favicon.svg");
+            Map<String,String> files=Map.of("/","index.html","/index.html","index.html","/app.js","app.js","/art.js","art.js","/camera.js","camera.js","/style.css","style.css","/favicon.svg","favicon.svg");
             String file=files.get(path);if(!method.equals("GET")||file==null){json(x,404,obj("error","Not found."));return;}
             byte[] content;try(InputStream in=PumpkinWatch.class.getResourceAsStream("/public/"+file)){content=in==null?Files.readAllBytes(Path.of("src/main/resources/public",file)):in.readAllBytes();}
             String ext=file.substring(file.lastIndexOf('.')+1);x.getResponseHeaders().set("Content-Type",Map.of("html","text/html; charset=utf-8","js","text/javascript; charset=utf-8","css","text/css; charset=utf-8","svg","image/svg+xml").get(ext));

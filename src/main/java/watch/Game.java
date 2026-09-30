@@ -7,8 +7,9 @@ import static watch.Json.obj;
 /** Authoritative simulation. All access is synchronized by the room's server lock. */
 public final class Game {
     static final int DUSK=60, WAVE=90, VOTE=20, WAVES=5, MAX_PLAYERS=8;
-    static final Point HOME=new Point(480,300);
-    static final double HOME_RADIUS=46, SPAWN_RADIUS=270;
+    static final int WORLD_WIDTH=1800, WORLD_HEIGHT=1400;
+    static final Point HOME=new Point(900,700);
+    static final double HOME_RADIUS=46, SPAWN_RADIUS=510;
     static final int FAN_PELLETS=9;
     public static final class Spec {
         public String name; public int cost; public double hp,damage,range,cooldown;
@@ -28,7 +29,7 @@ public final class Game {
     public static final class Player extends Point {
         public String id,name,skin; public double hp=100,ghost,repair,collected; public boolean ready,connected=true;
         double ix,iy; boolean action; Point target; long inputAt; long disconnectedAt;
-        Player(String id,String name,String skin,int index){super(480+76*Math.cos(index*Math.PI/4),300+76*Math.sin(index*Math.PI/4));this.id=id;this.name=name;this.skin=skin;}
+        Player(String id,String name,String skin,int index){super(HOME.x+100*Math.cos(index*Math.PI/4),HOME.y+100*Math.sin(index*Math.PI/4));this.id=id;this.name=name;this.skin=skin;}
     }
     public static final class Tower {
         public String type; public int level=1,shots; public double hp,maxHp,cooldown=.3; public boolean charged;
@@ -53,7 +54,7 @@ public final class Game {
     BigInteger score=BigInteger.ZERO; long lastSeen=System.currentTimeMillis();
     Game(String code,boolean practice){this(code,practice,new Random());}
     Game(String code,boolean practice,Random random){this.code=code;this.practice=practice;this.random=random;resetPlots();}
-    void resetPlots(){plots.clear();for(int i=0;i<8;i++)plots.add(new Plot(i,190,i*Math.PI/4));for(int i=0;i<4;i++)plots.add(new Plot(8+i,110,Math.PI/4+i*Math.PI/2));}
+    void resetPlots(){plots.clear();for(int i=0;i<8;i++)plots.add(new Plot(i,300,i*Math.PI/4));for(int i=0;i<4;i++)plots.add(new Plot(8+i,170,Math.PI/4+i*Math.PI/2));}
     static boolean inFan(Plot p,Point target){return (target.x-p.x)*Math.cos(p.facing)+(target.y-p.y)*Math.sin(p.facing)>=-1e-8;}
     void fireFan(Plot plot,double damage,boolean splash){Volley volley=new Volley();for(int i=0;i<FAN_PELLETS;i++)projectiles.add(new Projectile(++id,plot,plot.facing-Math.PI/2+i*Math.PI/(FAN_PELLETS-1),damage,splash,volley));}
     void moveProjectiles(double dt){
@@ -73,7 +74,7 @@ public final class Game {
     }
     Player player(String id){return players.stream().filter(p->p.id.equals(id)).findFirst().orElse(null);}
     Player addPlayer(String id,String name,String skin){
-        require(players.size()<MAX_PLAYERS,"This patch is full (8 players)."); require(phase.equals("lobby"),"This night has started. Join after the rematch.");
+        require(!practice||players.isEmpty(),"This is a single-player watch. Create a multiplayer patch to play together."); require(players.size()<MAX_PLAYERS,"This patch is full (8 players)."); require(phase.equals("lobby"),"This night has started. Join after the rematch.");
         name=name.strip().replaceAll("[\\p{Cntrl}]","");if(name.isEmpty())name="Little sprout";if(name.length()>18)name=name.substring(0,18);
         Player p=new Player(id,name,skin.equals("scarecrow")?skin:"pumpkin",players.size());players.add(p);if(host==null)host=id;return p;
     }
@@ -95,15 +96,16 @@ public final class Game {
             require(connected.stream().allMatch(q->q.ready),"Everyone needs to ready up first.");
             squadSize=connected.size();seeds=160+30*squadSize;phase="dusk";time=DUSK;harvestTimer=8;notice="Dusk · Guard the farmhouse from every direction.";return;
         }
-        if(type.equals("rematch")){
-            require(pid.equals(host)&&Set.of("won","lost").contains(phase),"The host can plant a new patch after this night.");
+        if(type.equals("begin-night")){require(practice&&pid.equals(host)&&phase.equals("dusk"),"Only a solo watch can skip preparation.");startWave();return;}
+        if(type.equals("rematch")||type.equals("restart-solo")){
+            require(pid.equals(host)&&(Set.of("won","lost").contains(phase)||(type.equals("restart-solo")&&practice&&active())),"The host can plant a new patch after this night.");
             phase="lobby";time=elapsed=wake=spawnTimer=harvestTimer=0;wave=seeds=kills=0;score=BigInteger.ZERO;enemies.clear();projectiles.clear();drops.clear();effects.clear();charms.clear();votes.clear();options.clear();resetPlots();
-            players.removeIf(q->!q.connected);for(Player q:players){q.ready=false;q.hp=100;q.ghost=q.repair=q.collected=0;q.x=556;q.y=300;q.ix=q.iy=0;q.action=false;q.target=null;}
-            notice="A fresh patch. A brand-new night.";return;
+            players.removeIf(q->!q.connected);for(Player q:players){q.ready=false;q.hp=100;q.ghost=q.repair=q.collected=0;q.x=HOME.x+100;q.y=HOME.y;q.ix=q.iy=0;q.action=false;q.target=null;}
+            notice="A fresh patch. A brand-new night.";if(practice){p.ready=true;command(pid,obj("type","start"));}return;
         }
         if(!active())return;
         if(type.equals("input")){p.ix=clamp(num(d,"x"),-1,1);p.iy=clamp(num(d,"y"),-1,1);p.action=Boolean.TRUE.equals(d.get("action"));p.inputAt=System.currentTimeMillis();if(p.ix!=0||p.iy!=0)p.target=null;return;}
-        if(type.equals("move")){require(d.get("x") instanceof Number&&d.get("y") instanceof Number,"Invalid destination.");p.target=new Point(clamp(num(d,"x"),24,936),clamp(num(d,"y"),24,576));return;}
+        if(type.equals("move")){require(d.get("x") instanceof Number&&d.get("y") instanceof Number,"Invalid destination.");p.target=new Point(clamp(num(d,"x"),24,WORLD_WIDTH-24),clamp(num(d,"y"),24,WORLD_HEIGHT-24));return;}
         if(type.equals("vote")&&phase.equals("vote")){String charm=str(d,"charm","");require(options.stream().anyMatch(c->c.get("id").equals(charm)),"Choose one of this harvest's charms.");votes.put(pid,charm);return;}
         if(!Set.of("build","upgrade").contains(type))return;
         require(p.ghost<=0,"Your pumpkin body will be back in a moment.");
@@ -118,7 +120,7 @@ public final class Game {
     }
     void effect(String type,Point p,String text){effects.add(new Effect(++id,type,p.x,p.y,text,p.x,p.y));}
     void spawn(boolean boss){double angle=random.nextDouble()*Math.PI*2;boolean armored=!boss&&wave>=3&&random.nextDouble()<.23;double hp=(boss?750:armored?95:48)*Math.pow(1.48,wave-1)*(1+.18*(squadSize-1));enemies.add(new Enemy(++id,angle,hp,boss?7:armored?9:13+wave*1.8,boss,armored));}
-    Drop gardenDrop(){double a=random.nextInt(4)*Math.PI/2;return new Drop(++id,HOME.x+140*Math.cos(a),HOME.y+140*Math.sin(a),12);}
+    Drop gardenDrop(){double a=random.nextInt(4)*Math.PI/2;return new Drop(++id,HOME.x+230*Math.cos(a),HOME.y+230*Math.sin(a),12);}
     void startWave(){wave++;phase="wave";time=WAVE;spawnTimer=1;notice=wave==5?"The Skeleton King has arrived. Mind his crown.":"Wave "+wave+" · Keep the farmer dreaming.";if(wave==5)spawn(true);}
     void damage(Enemy e,double amount,Point from){
         if(e.hp<=0)return;e.hp-=amount;effects.add(new Effect(++id,"shot",from.x,from.y,Long.toString(Math.round(amount)),e.x,e.y));
@@ -143,11 +145,11 @@ public final class Game {
         if(!active())return;elapsed+=dt;time=Math.max(0,time-dt);effects.removeIf(e->(e.ttl-=dt)<=0);
         for(Player p:players){
             if(!p.connected)continue;
-            if(p.ghost>0){p.ghost=Math.max(0,p.ghost-dt);if(p.ghost==0){p.hp=100;p.x=556;p.y=300;}continue;}
+            if(p.ghost>0){p.ghost=Math.max(0,p.ghost-dt);if(p.ghost==0){p.hp=100;p.x=HOME.x+100;p.y=HOME.y;}continue;}
             if(System.currentTimeMillis()-p.inputAt>600){p.ix=p.iy=0;p.action=false;}
             double x=p.ix,y=p.iy;
             if(p.target!=null&&x==0&&y==0){x=p.target.x-p.x;y=p.target.y-p.y;if(Math.hypot(x,y)<5){p.target=null;x=y=0;}}
-            double len=Math.hypot(x,y);if(len>0){double step=Math.min(120*dt,p.target!=null?len:Double.MAX_VALUE);p.x=clamp(p.x+x/len*step,24,936);p.y=clamp(p.y+y/len*step,24,576);}
+            double len=Math.hypot(x,y);if(len>0){double step=Math.min(120*dt,p.target!=null?len:Double.MAX_VALUE);p.x=clamp(p.x+x/len*step,24,WORLD_WIDTH-24);p.y=clamp(p.y+y/len*step,24,WORLD_HEIGHT-24);}
             p.hp=Math.min(100,p.hp+dt*2);
             if(p.action){Plot near=plots.stream().filter(q->q.tower!=null&&q.tower.hp<q.tower.maxHp&&dist(p,q)<88).min(Comparator.comparingDouble(q->dist(p,q))).orElse(null);if(near!=null){Tower t=near.tower;double heal=Math.min(t.maxHp-t.hp,dt*42);t.hp+=heal;p.repair+=heal;if(stack("patch")>0)t.charged=true;}}
             for(Iterator<Drop> it=drops.iterator();it.hasNext();){Drop d=it.next();if(dist(p,d)<48){seeds+=d.value;p.collected+=d.value;effect("seed",p,"+"+d.value);it.remove();}}

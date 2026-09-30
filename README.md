@@ -19,6 +19,12 @@ Alternatively, use PowerShell from this folder:
 
 The script compiles Java and copies web resources. There are no third-party runtime dependencies; Node.js is not needed to play.
 
+## Single-player testing
+
+Click **Play single player** on the opening screen. A solo run begins immediately with the same five waves, charms, circular defenses and one-player difficulty scaling. No room code or ready-up step is required.
+
+Use **Ready? Start the wave** to skip the remaining preparation time once you have planted your defenses. **Restart this run** resets your farm, seeds, upgrades and score so you can try another approach. After a run ends, **One more night** immediately begins a new solo run. Refreshing the tab reconnects you to the current run.
+
 ## Friends on their own devices
 
 Everyone should be on the same Wi-Fi/LAN. The Run console prints `Same Wi-Fi: http://...:3000`. Share the address for your real network adapter, rather than a VPN or virtual adapter. Phones must use that address, not `localhost`.
@@ -30,6 +36,8 @@ This first version uses local-network play. Internet hosting is not configured. 
 ## Controls and rules
 
 - WASD / arrows to move; click/tap the ground to walk there.
+- Hold the right mouse button and drag to pan the larger map. Press Space or the recenter button to follow your character again. On touch devices, toggle Pan before dragging.
+- Buy plants, upgrade and repair through the HUD inside the game window. Open Charms at the top right to inspect your collected charms and their stack counts.
 - Click/tap a marked plot to walk near it and select it. Choose a defense card or use keys 1–4 to plant.
 - Hold E or the repair button near damaged defenses. Repairs cost time, not seeds.
 - Upgrade a selected defense to increase damage/health and restore its health. Level cap: 10 per night.
@@ -60,7 +68,7 @@ Scores use Java BigInteger, travel as decimal strings, and display compactly whe
 
 Run `./run.ps1 -Test` in PowerShell, or run `src/test/java/watch/GameTest.java` in IntelliJ. The dependency-free suite checks simulation rules and real HTTP/event-stream clients, including eight players and simultaneous construction. It uses an ephemeral port and shuts itself down.
 
-Optional `scripts/browser-smoke.cjs` requires Playwright and an installed Edge browser (set `PW_CHANNEL=chrome` for Chrome). Start the server on port 3000, then run the script with Node. It checks desktop/mobile layouts, two-player joining, readiness, shared building/upgrading, safe names, reload reconnect, and help. Screenshots are saved under ignored `test-results/`.
+Optional `scripts/browser-smoke.cjs` requires Playwright and an installed Edge browser (set `PW_CHANNEL=chrome` for Chrome). Start the server on port 3000, then run the script with Node. It checks desktop/mobile layouts, two-player joining, readiness, shared building/upgrading, safe names, reload reconnect, help, solo restart, right-drag panning without player movement, Space recentering, and the in-game HUD. Screenshots are saved under ignored `test-results/`.
 
 The first build has automated checks and browser verification. Difficulty needs real group playtesting. Mobile layout has been emulated; a physical phone connection has not been verified.
 
