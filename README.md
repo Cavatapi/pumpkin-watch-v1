@@ -2,22 +2,6 @@
 
 A cozy Halloween defense game for 2–8 players. A Java server runs the shared farm; each player joins in their browser. Includes solo practice, original pixel artwork, keyboard/touch controls, and five waves ending with the Skeleton King.
 
-## Run in IntelliJ IDEA
-
-1. Open `C:\Users\antho\IdeaProjects\Pumpkin Watch` (with the space).
-2. Use JDK 21 or newer as the Project SDK. Your Corretto 23 is suitable. Load `pom.xml` as a Maven project if prompted.
-3. Open `src/main/java/watch/PumpkinWatch.java`. Click the green Run triangle beside `main`.
-4. Open **http://localhost:3000** in your browser.
-
-If port 3000 is already in use, another copy is running. Use the existing page, stop that copy, or set `PORT=3001` in your Run configuration and open that port instead.
-
-Alternatively, use PowerShell from this folder:
-
-```powershell
-.\run.ps1
-```
-
-The script compiles Java and copies web resources. There are no third-party runtime dependencies; Node.js is not needed to play.
 
 ## Single-player testing
 
